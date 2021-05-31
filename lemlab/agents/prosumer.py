@@ -388,6 +388,8 @@ class Prosumer:
                                                        return_val="pos")]}
 
         for plant in self.plant_dict:
+            # if plant == 'z825784t3q':
+            #     print('here')
             log_ems.append(self.meas_val[plant] * factor_w_to_wh)
             dict_new_readings_local[plant] = [self._decomp_float(self.meas_val[plant] * factor_w_to_wh,
                                                                  return_val="neg"),
