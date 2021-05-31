@@ -141,6 +141,10 @@ class Prosumer:
         model.deviation_gr_plus = pyo.Var(domain=pyo.NonNegativeReals)
         model.deviation_gr_minus = pyo.Var(domain=pyo.NonNegativeReals)
 
+        # wind variables
+        model.p_wind = pyo.Var(self._get_list_plants(plant_type="wind"),
+                             domain=pyo.NonNegativeReals)
+
         # pv variables
         model.p_pv = pyo.Var(self._get_list_plants(plant_type="pv"),
                              domain=pyo.NonNegativeReals)
@@ -302,6 +306,8 @@ class Prosumer:
                     expression_left += p_load
             for _fixedgen in self._get_list_plants(plant_type="fixedgen"):
                 expression_left += _model.p_fixedgen[_fixedgen]
+            for _wind in self._get_list_plants(plant_type="wind"):
+                expression_left += model.p_wind[_wind]
             for _pv in self._get_list_plants(plant_type="pv"):
                 expression_left += model.p_pv[_pv]
             for _bat in self._get_list_plants(plant_type="bat"):
@@ -333,6 +339,9 @@ class Prosumer:
 
         # assign results to instance variables for logging
         meas_grid = p_load
+        for wind in self._get_list_plants(plant_type="wind"):
+            self.meas_val[wind] = model.p_wind[wind].value
+            meas_grid += model.p_wind[wind].value
         for pv in self._get_list_plants(plant_type="pv"):
             self.meas_val[pv] = model.p_pv[pv].value
             meas_grid += model.p_pv[pv].value
@@ -388,7 +397,7 @@ class Prosumer:
                                                        return_val="pos")]}
 
         for plant in self.plant_dict:
-            # if plant == 'z825784t3q':
+            # if plant == 'x936898i66':#z825784t3q': aul82p8i66 x936898i66
             #     print('here')
             log_ems.append(self.meas_val[plant] * factor_w_to_wh)
             dict_new_readings_local[plant] = [self._decomp_float(self.meas_val[plant] * factor_w_to_wh,
