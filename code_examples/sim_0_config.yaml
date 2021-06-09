@@ -385,7 +385,7 @@ producer:
 
   "wind_power": 30000                       # peak power of wind power generator in w
 
-  "wind_controllable": false                # can the generator be controlled? (can power be decreased?)
+  "wind_controllable": true                # can the generator be controlled? (can power be decreased?)
 
   "wind_fcast": "wind_lookup_perfect"       # wind production forecasting method
                                             #   "wind_lookup_perfect" - perfect knowledge of future wind speeds

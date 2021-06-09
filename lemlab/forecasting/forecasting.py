@@ -240,9 +240,9 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
 
     elif fcast == "wind_lookup_file_forecast":
         # Path to directory of forecasts
-        path = os.path.join(os.path.dirname(os.path.dirname(filepath)),'weather','forecast')
+        path_wind = os.path.join(os.path.dirname(os.path.dirname(filepath)),'weather','forecast')
         # has a file for wind in which the prediction are made
-        df_in = feather.read_dataframe(path+f"/{ts_delivery_current}.ft")
+        df_in = feather.read_dataframe(path_wind+f"/{ts_delivery_current}.ft")
         df_in.set_index("timestamp", inplace=True)
         # get windspeed in m/s
         y_pre = list(df_in[(ts_delivery_current <= df_in.index)
@@ -261,10 +261,10 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
         return y_hat
 
     elif fcast == "wind_lookup_perfect":
-        # Path to directory of forecasts
-        path = os.path.join(os.path.dirname(os.path.dirname(filepath)),'weather')
+        # Path to directory of actual data
+        path_wind = os.path.join(os.path.dirname(os.path.dirname(filepath)),'weather')
         # Read actual data
-        df_in = feather.read_dataframe(path+f"/weather.ft")
+        df_in = feather.read_dataframe(path_wind+f"/weather.ft")
         df_in.set_index("timestamp", inplace=True)
         # get windspeed in m/s
         y_pre = list(df_in[(ts_delivery_current <= df_in.index)

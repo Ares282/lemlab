@@ -12,6 +12,7 @@ import numpy as np
 import pyomo.environ as pyo
 from random import random
 import lemlab.forecasting.forecasting as fcast
+from lemlab.lem.settlement import _lookup
 import warnings
 
 
@@ -154,6 +155,26 @@ class Prosumer:
         model.p_fixedgen = pyo.Var(self._get_list_plants(plant_type="fixedgen"),
                                    domain=pyo.NonNegativeReals)
 
+        # wind maxium power constraint
+        def wind_rule(_model, _plant):
+            # get turbine data
+            with open(self.path+"/wind.json", "r") as file_turbine:
+                data_turbine = json.load(file_turbine)
+            # Path to directory of actual data
+            path_wind = os.path.join(os.path.dirname(os.path.dirname(self.path)),"weather", "weather.ft")
+            # get wind data in m/s
+            data_wind = ft.read_dataframe(path_wind)
+            data_wind.set_index("timestamp", inplace=True)
+            data_wind = float(data_wind[data_wind.index == self.ts_delivery_prev]["wind_speed"].values)
+            # convert data_wind and data_turbine in max possible power in kW
+            data_power = _lookup(x=data_wind, x_axis=data_turbine["wind_speed"], y_axis=data_turbine["power"])
+            # convert into Energie in kWh
+            p_max = data_power/4
+            if self.plant_dict[_plant].get("controllable"):
+                return _model.p_wind[_plant] <= p_max
+            return _model.p_wind[_plant] == p_max
+
+
         # pv maximum power constraint
         def pv_rule(_model, _plant):
             p_max = ft.read_dataframe(f"{self.path}/raw_data_{_plant}.ft")
@@ -172,6 +193,10 @@ class Prosumer:
             if self.plant_dict[_plant].get("controllable"):
                 return _model.p_fixedgen[_plant] <= p_max
             return _model.p_fixedgen[_plant] == p_max
+
+        # if self._get_list_plants(plant_type="wind"):
+        #     model.con_wind = pyo.Constraint(self._get_list_plants(plant_type="wind"),
+        #                                     rule=wind_rule)
 
         if self._get_list_plants(plant_type="pv"):
             model.con_pv = pyo.Constraint(self._get_list_plants(plant_type="pv"),
