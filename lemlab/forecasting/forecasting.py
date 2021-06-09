@@ -7,7 +7,10 @@ __email__ = "sebastian.lumpp@tum.de"
 import feather
 import random
 import numpy as np
+import json
+import os
 from scipy.optimize import minimize as sp_minimize
+from lemlab.lem import settlement
 
 """
 forecasting provides functions for the forecasting/prediction of household electric load and production for application
@@ -144,7 +147,7 @@ def _sarma_objective(par, training_data, order=[3, 0, 3, 3, 0, 3, 96, 2, 0, 2, 9
     return np.sqrt(np.mean(np.square(err)))
 
 
-def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_current, filepath, column="power"):
+def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_current, filepath, column="power", plants = None):
     """
     Takes a forecast model fcast and applies it to the data in "column" of "filepath" and returns a forecast starting at
     ts_delivery_current for "fcast_horizon" steps.
@@ -234,6 +237,50 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
             fcast[step] += mean_data
             fcast[step] *= df_in[(df_in.index <= ts_delivery_current - 900)][column].max()/2
         return fcast
+
+    elif fcast == "wind_lookup_file_forecast":
+        # Path to directory of forecasts
+        path = os.path.join(os.path.dirname(os.path.dirname(filepath)),'weather','forecast')
+        # has a file for wind in which the prediction are made
+        df_in = feather.read_dataframe(path+f"/{ts_delivery_current}.ft")
+        df_in.set_index("timestamp", inplace=True)
+        # get windspeed in m/s
+        y_pre = list(df_in[(ts_delivery_current <= df_in.index)
+                    & (df_in.index <= ts_delivery_current + 900 * fcast_horizon -1)]
+                    [column])
+        # get Windturbine Modell data
+        with open(filepath+f"/wind.json", "r") as file:
+            data = json.load(file)
+        x_axis = data["wind_speed"]
+        y_axis = data["power"]
+        # get the Power in kW the turbine is producing
+        y_hat = [settlement._lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
+        # calculate the Energie in kWh
+        # divided by 4 because the data is in quarter houers
+        y_hat = [power/4 for power in y_hat]
+        return y_hat
+
+    elif fcast == "wind_lookup_perfect":
+        # Path to directory of forecasts
+        path = os.path.join(os.path.dirname(os.path.dirname(filepath)),'weather')
+        # Read actual data
+        df_in = feather.read_dataframe(path+f"/weather.ft")
+        df_in.set_index("timestamp", inplace=True)
+        # get windspeed in m/s
+        y_pre = list(df_in[(ts_delivery_current <= df_in.index)
+                    & (df_in.index <= ts_delivery_current + 900 * fcast_horizon -1)]
+                    [column])
+        # get Windturbine Modell data
+        with open(filepath+f"/wind.json", "r") as file:
+            data = json.load(file)
+        x_axis = data["wind_speed"]
+        y_axis = data["power"]
+        # get the Power in kW the turbine is producing
+        y_hat = [settlement._lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
+        # calculate the Energie in kWh
+        # divided by 4 because the data is in quarter houers
+        y_hat = [power/4 for power in y_hat]
+        return y_hat
 
     elif fcast == "perfect":
         # perfect knowledge of the future

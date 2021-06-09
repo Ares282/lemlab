@@ -231,7 +231,7 @@ class Scenario:
         ft.write_dataframe(df_weather.reset_index(), f"{self.path_scenario}/weather/weather.ft")
         for file in os.listdir(f"{self.path_input_data}/weather/forecast"):
             df_forecast = pd.read_csv(f"{self.path_input_data}/weather/forecast/{file}").set_index("timestamp")
-            ft.write_dataframe(df_forecast.reset_index(), f"{self.path_scenario}/weather/forecast/{file.split('.')[0]}")
+            ft.write_dataframe(df_forecast.reset_index(), f"{self.path_scenario}/weather/forecast/{file.split('.')[0]}.ft")
 
     def __create_folders(self, list_paths: list) -> None:
         """creates new or replaces existing folders specified in the list of paths
@@ -1061,9 +1061,18 @@ class Scenario:
         power_wind = plant_dict[plant_id].get("power")
         filename_wind = filenames_wind[min(range(len(powers_wind)), key=lambda i: abs(powers_wind[i] - power_wind))]
 
-        # Copy wind file under plant_id name into prosumer specifications directoryprosumer directory
-        shutil.copyfile(f"{self.path_input_data}/prosumers/wind/{filename_wind}",
-                        f"{self.path_scenario}/prosumer/{account['id_user']}/wind_{plant_id}.json")
+        # # Copy wind file under plant_id name into prosumer specifications directoryprosumer directory
+        # shutil.copyfile(f"{self.path_input_data}/prosumers/wind/{filename_wind}",
+        #                 f"{self.path_scenario}/prosumer/{account['id_user']}/wind.json")
+
+        # Copy wind file under plant_id name into prosumer specifications directory prosumer directory with Adaptation 
+        with open(f"{self.path_input_data}/prosumers/wind/{filename_wind}", "r") as turbine_file:
+            turbine_data = json.load(turbine_file)
+            # Adapt the power to the best powercurve 
+            turbine_data["power"] = [power_normed*power_wind for power_normed in turbine_data["power"]]
+            # Save file into prosumer specification directory prosumer
+            with open(f"{self.path_scenario}/prosumer/{account['id_user']}/wind.json", "w") as scaled_file:
+                json.dump(turbine_data,scaled_file)
 
     def __create_fixedgen_files(self, **kwargs) -> None:
         """creates the fixed generation files of the respective prosumer

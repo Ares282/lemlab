@@ -363,7 +363,7 @@ producer:
 
   ################################ large-scale pv generation settings ####################################
 
-  "pv_active": False                        # is there a large-scale pv producer?
+  "pv_active": false                        # is there a large-scale pv producer?
 
   "pv_power": 60000                         # peak power of photovoltaic plant in w
 
@@ -381,13 +381,13 @@ producer:
   ################################ large-scale wind generation settings ####################################
   ################################ wind power is coming soon
 
-  "wind_active": false                      # is there a large-scale wind producer?
+  "wind_active": true                      # is there a large-scale wind producer?
 
   "wind_power": 30000                       # peak power of wind power generator in w
 
   "wind_controllable": false                # can the generator be controlled? (can power be decreased?)
 
-  "wind_fcast": "perfect"                   # wind production forecasting method
+  "wind_fcast": "wind_lookup_perfect"       # wind production forecasting method
                                             #   "wind_lookup_perfect" - perfect knowledge of future wind speeds
                                             #                           and turbine model
                                             #   "wind_lookup_file_forecast" - weather forecast from file used with

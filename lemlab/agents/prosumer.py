@@ -5,6 +5,7 @@ __maintainer__ = "sdlumpp"
 __email__ = "sebastian.lumpp@tum.de"
 
 import json
+import os
 import feather as ft
 import pandas as pd
 import numpy as np
@@ -450,6 +451,17 @@ class Prosumer:
 
                     ts_pred[f"power_{plant}"] = [i * self.plant_dict[plant].get("power") for i in temp]
 
+                elif self.plant_dict[plant].get("type") == "wind":
+                    ts_pred[f"power_{plant}"] = fcast.get_forecast(
+                        fcast=self.plant_dict[plant].get("fcast"),
+                        fcast_horizon=self.config_dict["mpc_horizon"],
+                        fcast_param=self.plant_dict[plant].get("fcast_param"),
+                        fcast_order=self.plant_dict[plant].get("fcast_order"),
+                        ts_delivery_current=self.ts_delivery_current,
+                        filepath=self.path,
+                        column="wind_speed"
+                        )
+
                 elif self.plant_dict[plant].get("type") == "hh":
                     ts_pred[f"power_{plant}"] = fcast.get_forecast(
                         fcast=self.plant_dict[plant].get("fcast"),
@@ -521,6 +533,7 @@ class Prosumer:
             ts_pred["timestamp"] = range(self.ts_delivery_current,
                                          self.ts_delivery_current + self.config_dict["mpc_horizon"] * 900,
                                          900)
+            # print(next(iter(ts_pred)))
             self.mpc_table = pd.DataFrame(ts_pred)
             self.mpc_table.set_index("timestamp", inplace=True)
 
