@@ -12,7 +12,7 @@ import numpy as np
 import pyomo.environ as pyo
 from random import random
 import lemlab.forecasting.forecasting as fcast
-from lemlab.lem.settlement import _lookup
+# from lemlab.lem.settlement import _lookup
 import warnings
 
 
@@ -167,9 +167,9 @@ class Prosumer:
             data_wind.set_index("timestamp", inplace=True)
             data_wind = float(data_wind[data_wind.index == self.ts_delivery_prev]["wind_speed"].values)
             # convert data_wind and data_turbine in max possible power in kW
-            data_power = _lookup(x=data_wind, x_axis=data_turbine["wind_speed"], y_axis=data_turbine["power"])
-            # convert into Energie in kWh
-            p_max = data_power/4
+            data_power = self._lookup(x=data_wind, x_axis=data_turbine["wind_speed"], y_axis=data_turbine["power"])
+            # convert into Energie in Wh
+            p_max = data_power/4*1000
             if self.plant_dict[_plant].get("controllable"):
                 return _model.p_wind[_plant] <= p_max
             return _model.p_wind[_plant] == p_max
@@ -483,7 +483,7 @@ class Prosumer:
                         fcast_param=self.plant_dict[plant].get("fcast_param"),
                         fcast_order=self.plant_dict[plant].get("fcast_order"),
                         ts_delivery_current=self.ts_delivery_current,
-                        filepath=self.path,
+                        filepath=f"{self.path}/wind_{plant}.json",
                         column="wind_speed"
                         )
 
@@ -575,8 +575,13 @@ class Prosumer:
         # Declare the pyomo model
         model = pyo.ConcreteModel()
         # declare decision variables (vectors of same length as MPC horizon)
-        # pv power variable
 
+        # wind power variable
+        if self._get_list_plants(plant_type="wind"):
+            model.p_wind = pyo.Var(self._get_list_plants(plant_type="wind"),
+                                    range(0, self.config_dict["mpc_horizon"]),
+                                    domain=pyo.NonNegativeReals)
+        # pv power variable
         if self._get_list_plants(plant_type="pv"):
             model.p_pv = pyo.Var(self._get_list_plants(plant_type="pv"),
                                  range(0, self.config_dict["mpc_horizon"]),
@@ -744,6 +749,19 @@ class Prosumer:
             model.con_grid_bin.add(expr=model.p_grid_in[t] <= 1000000 * (1 - model.p_grid_milp[t]))
             model.con_grid_bin.add(expr=model.p_grid_out[t] <= 1000000 * model.p_grid_milp[t])
 
+        # define wind power upper bound from input file
+        model.con_p_wind = pyo.ConstraintList()
+        model.sum_wind = [0] * self.config_dict["mpc_horizon"]
+        for wind in self._get_list_plants(plant_type="wind"):
+            for t, t_d in enumerate(range(self.ts_delivery_current,
+                                          self.ts_delivery_current + 900*self.config_dict["mpc_horizon"], 900)):
+                model.sum_wind[t] += self.mpc_table.loc[t_d, f"power_{wind}"]
+                if self.plant_dict[wind].get("controllable"):
+                    model.con_p_wind.add(expr=model.p_wind[wind, t] <= round(self.mpc_table.loc[t_d, f"power_{wind}"], 1))
+                else:
+                    model.con_p_wind.add(expr=model.p_wind[wind, t] == round(self.mpc_table.loc[t_d, f"power_{wind}"], 1))
+
+        
         # define pv power upper bound from input file
         model.con_p_pv = pyo.ConstraintList()
         model.sum_pv = [0] * self.config_dict["mpc_horizon"]
@@ -799,6 +817,8 @@ class Prosumer:
         model.con_balance = pyo.ConstraintList()
         for _t in range(self.config_dict["mpc_horizon"]):
             expression_left = p_load[_t]
+            for _wind in self._get_list_plants(plant_type="wind"):
+                expression_left += model.p_wind[_wind, _t]
             for _pv in self._get_list_plants(plant_type="pv"):
                 expression_left += model.p_pv[_pv, _t]
             for _bat in self._get_list_plants(plant_type="bat"):
@@ -840,6 +860,9 @@ class Prosumer:
         dict_mpc_table = self.mpc_table.to_dict()
         for i, t_d in enumerate(range(self.ts_delivery_current,
                                       self.ts_delivery_current + 900 * self.config_dict["mpc_horizon"], 900)):
+            # Wind
+            for wind in self._get_list_plants(plant_type="wind"):
+                dict_mpc_table[f"power_{wind}"][t_d] = model.p_wind[wind, i]()
             # PV
             for pv in self._get_list_plants(plant_type="pv"):
                 dict_mpc_table[f"power_{pv}"][t_d] = model.p_pv[pv, i]()
@@ -1197,6 +1220,27 @@ class Prosumer:
         if random() + self.config_dict["meter_prob_missing"] <= 1:
             ft.write_dataframe(df_meter_readings,
                                f"{self.path}/buffer_meter_readings.ft")
+
+    def _lookup(self, x, x_axis, y_axis):
+        """
+        Static internal method:
+        Perform lookup on provided table. Find y-value for desired x-value
+
+        :param x: x-value to look up
+        :param x_axis: x-axis of lookup table
+        :param y_axis: y-value of lookup table
+
+        :return: float, y-value corresponding to x-value input
+        """
+        if x <= x_axis[0]:
+            return y_axis[0]
+        if x >= x_axis[-1]:
+            return y_axis[-1]
+
+        i = bisect_left(x_axis, x)
+        k = (x - x_axis[i - 1]) / (x_axis[i] - x_axis[i - 1])
+        y = k * (y_axis[i] - y_axis[i - 1]) + y_axis[i - 1]
+        return y
 
     # Internal methods and functions
 

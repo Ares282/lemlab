@@ -1063,7 +1063,7 @@ class Scenario:
 
         # # Copy wind file under plant_id name into prosumer specifications directoryprosumer directory
         # shutil.copyfile(f"{self.path_input_data}/prosumers/wind/{filename_wind}",
-        #                 f"{self.path_scenario}/prosumer/{account['id_user']}/wind.json")
+        #                 f"{self.path_scenario}/prosumer/{account['id_user']}/wind_{plant_id}.json")
 
         # Copy wind file under plant_id name into prosumer specifications directory prosumer directory with Adaptation 
         with open(f"{self.path_input_data}/prosumers/wind/{filename_wind}", "r") as turbine_file:
@@ -1071,7 +1071,7 @@ class Scenario:
             # Adapt the power to the best powercurve 
             turbine_data["power"] = [power_normed*power_wind for power_normed in turbine_data["power"]]
             # Save file into prosumer specification directory prosumer
-            with open(f"{self.path_scenario}/prosumer/{account['id_user']}/wind.json", "w") as scaled_file:
+            with open(f"{self.path_scenario}/prosumer/{account['id_user']}/wind_{plant_id}.json", "w") as scaled_file:
                 json.dump(turbine_data,scaled_file)
 
     def __create_fixedgen_files(self, **kwargs) -> None:

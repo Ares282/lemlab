@@ -240,46 +240,47 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
 
     elif fcast == "wind_lookup_file_forecast":
         # Path to directory of forecasts
-        path_wind = os.path.join(os.path.dirname(os.path.dirname(filepath)),'weather','forecast')
+        path_wind = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(filepath))),
+                                "weather","forecast",f"{ts_delivery_current}.ft")
         # has a file for wind in which the prediction are made
-        df_in = feather.read_dataframe(path_wind+f"/{ts_delivery_current}.ft")
+        df_in = feather.read_dataframe(path_wind)
         df_in.set_index("timestamp", inplace=True)
         # get windspeed in m/s
         y_pre = list(df_in[(ts_delivery_current <= df_in.index)
                     & (df_in.index <= ts_delivery_current + 900 * fcast_horizon -1)]
                     [column])
         # get Windturbine Modell data
-        with open(filepath+f"/wind.json", "r") as file:
+        with open(filepath, "r") as file:
             data = json.load(file)
         x_axis = data["wind_speed"]
         y_axis = data["power"]
         # get the Power in kW the turbine is producing
         y_hat = [settlement._lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
-        # calculate the Energie in kWh
+        # calculate the Energie in Wh
         # divided by 4 because the data is in quarter houers
-        y_hat = [power/4 for power in y_hat]
+        y_hat = [power/4*1000 for power in y_hat]
         return y_hat
 
     elif fcast == "wind_lookup_perfect":
         # Path to directory of actual data
-        path_wind = os.path.join(os.path.dirname(os.path.dirname(filepath)),'weather')
+        path_wind = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(filepath))),"weather","weather.ft")
         # Read actual data
-        df_in = feather.read_dataframe(path_wind+f"/weather.ft")
+        df_in = feather.read_dataframe(path_wind)
         df_in.set_index("timestamp", inplace=True)
         # get windspeed in m/s
         y_pre = list(df_in[(ts_delivery_current <= df_in.index)
                     & (df_in.index <= ts_delivery_current + 900 * fcast_horizon -1)]
                     [column])
         # get Windturbine Modell data
-        with open(filepath+f"/wind.json", "r") as file:
+        with open(filepath, "r") as file:
             data = json.load(file)
         x_axis = data["wind_speed"]
         y_axis = data["power"]
         # get the Power in kW the turbine is producing
         y_hat = [settlement._lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
-        # calculate the Energie in kWh
+        # calculate the Energie in Wh
         # divided by 4 because the data is in quarter houers
-        y_hat = [power/4 for power in y_hat]
+        y_hat = [power/4*1000 for power in y_hat]
         return y_hat
 
     elif fcast == "perfect":

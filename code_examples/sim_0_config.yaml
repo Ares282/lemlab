@@ -387,7 +387,7 @@ producer:
 
   "wind_controllable": true                # can the generator be controlled? (can power be decreased?)
 
-  "wind_fcast": "wind_lookup_perfect"       # wind production forecasting method
+  "wind_fcast": "wind_lookup_file_forecast"       # wind production forecasting method
                                             #   "wind_lookup_perfect" - perfect knowledge of future wind speeds
                                             #                           and turbine model
                                             #   "wind_lookup_file_forecast" - weather forecast from file used with
