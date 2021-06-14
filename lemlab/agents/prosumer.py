@@ -12,7 +12,7 @@ import numpy as np
 import pyomo.environ as pyo
 from random import random
 import lemlab.forecasting.forecasting as fcast
-# from lemlab.lem.settlement import _lookup
+from bisect import bisect_left
 import warnings
 
 
@@ -158,7 +158,7 @@ class Prosumer:
         # wind maxium power constraint
         def wind_rule(_model, _plant):
             # get turbine data
-            with open(self.path+"/wind.json", "r") as file_turbine:
+            with open(self.path+f"/wind_{_plant}.json", "r") as file_turbine:
                 data_turbine = json.load(file_turbine)
             # Path to directory of actual data
             path_wind = os.path.join(os.path.dirname(os.path.dirname(self.path)),"weather", "weather.ft")
@@ -194,9 +194,9 @@ class Prosumer:
                 return _model.p_fixedgen[_plant] <= p_max
             return _model.p_fixedgen[_plant] == p_max
 
-        # if self._get_list_plants(plant_type="wind"):
-        #     model.con_wind = pyo.Constraint(self._get_list_plants(plant_type="wind"),
-        #                                     rule=wind_rule)
+        if self._get_list_plants(plant_type="wind"):
+            model.con_wind = pyo.Constraint(self._get_list_plants(plant_type="wind"),
+                                            rule=wind_rule)
 
         if self._get_list_plants(plant_type="pv"):
             model.con_pv = pyo.Constraint(self._get_list_plants(plant_type="pv"),
