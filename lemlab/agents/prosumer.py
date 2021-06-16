@@ -19,7 +19,7 @@ import warnings
 class Prosumer:
     """Prosumer defines objects and methods used to simulate a single family home in a local energy market
 
-       This class is intended for use in conjunction with the Supplier and Simulation classes. In addition, the
+       This class is intended for use in conjunction with the Retailer and Simulation classes. In addition, the
        functionality of the Platform/clearing_ex_ante.py module is required in order for market clearing to be enacted.
 
        A single family home can simulate the following physical plants, depending on the selected configuration:
@@ -340,7 +340,7 @@ class Prosumer:
                 expression_left += _model.p_bat_out[_bat] - _model.p_bat_in[_bat]
             for _ev in self._get_list_plants(plant_type="ev"):
                 expression_left += model.p_ev_out[_ev] - model.p_ev_in[_ev]
-            expression_right = float(df_target_grid_power[f"power_{self.config_dict['id_meter_main']}"])
+            expression_right = float(df_target_grid_power[f"power_{self.config_dict['id_meter_grid']}"])
             expression_right -= _model.deviation_gr_plus - _model.deviation_gr_minus
             return expression_left == expression_right
 
@@ -391,7 +391,7 @@ class Prosumer:
             with open(f"{self.path}/soc_{ev}.json", "w") as write_file:
                 json.dump(ev_soc_new, write_file)
 
-        self.meas_val[self.config_dict['id_meter_main']] = int(meas_grid)
+        self.meas_val[self.config_dict['id_meter_grid']] = int(meas_grid)
 
         # save calculated values to .json file so that results can be used by later methods in case of parallelization
         with open(f"{self.path}/controller_rtc.json", "w") as write_file:
@@ -412,13 +412,13 @@ class Prosumer:
         # define local lists for containing new measurement values, once for local logging, once for database logging
         factor_w_to_wh = 1 / 4
 
-        log_ems = [self.meas_val[self.config_dict['id_meter_main']] * factor_w_to_wh]
+        log_ems = [self.meas_val[self.config_dict['id_meter_grid']] * factor_w_to_wh]
 
-        dict_new_readings_local = {self.config_dict['id_meter_main']:
-                                   [self._decomp_float(self.meas_val[self.config_dict['id_meter_main']]
+        dict_new_readings_local = {self.config_dict['id_meter_grid']:
+                                   [self._decomp_float(self.meas_val[self.config_dict['id_meter_grid']]
                                                        * factor_w_to_wh,
                                                        return_val="neg"),
-                                    self._decomp_float(self.meas_val[self.config_dict['id_meter_main']]
+                                    self._decomp_float(self.meas_val[self.config_dict['id_meter_grid']]
                                                        * factor_w_to_wh,
                                                        return_val="pos")]}
 
@@ -460,7 +460,7 @@ class Prosumer:
 
         :return: None
         """
-        ts_pred = {f"power_{self.config_dict['id_meter_main']}": [0]*self.config_dict["mpc_horizon"]}
+        ts_pred = {f"power_{self.config_dict['id_meter_grid']}": [0]*self.config_dict["mpc_horizon"]}
         zero_vector = [0] * self.config_dict["mpc_horizon"]
         if self.config_dict["mpc_horizon"] > 0:
             for plant in self.plant_dict:
@@ -891,7 +891,7 @@ class Prosumer:
                 dict_mpc_table[f"power_{fixedgen}"][t_d] = model.p_fixedgen[fixedgen, i]()
 
             # Grid power
-            dict_mpc_table[f"power_{self.config_dict['id_meter_main']}"][t_d] \
+            dict_mpc_table[f"power_{self.config_dict['id_meter_grid']}"][t_d] \
                 = model.p_grid_out[i]() - model.p_grid_in[i]()
 
         # Save results to file, which will be used as basis for controller_real_time set points and market trading
@@ -943,13 +943,9 @@ class Prosumer:
                 dict_price_history.update({"weighted_average_price": self.config_dict["max_bid"],
                                            "total_energy_traded": 0})
             else:
-                total_energy = 0
-                total_paid = 0
-                for index, contents in market_results.iterrows():
-                    total_energy += contents[db_obj.db_param.QTY_ENERGY_TRADED]
-                    total_paid += contents[db_obj.db_param.QTY_ENERGY_TRADED] \
-                        * contents[db_obj.db_param.PRICE_ENERGY_MARKET_
-                                   + db_obj.lem_config["types_pricing_ex_ante"][0]]
+                total_energy = market_results[db_obj.db_param.QTY_ENERGY_TRADED].sum()
+                total_paid = (market_results[db_obj.db_param.QTY_ENERGY_TRADED] * market_results[db_obj.db_param.PRICE_ENERGY_MARKET_
+                              + db_obj.lem_config["types_pricing_ex_ante"][0]]).sum()
                 if total_energy != 0:
                     dict_price_history.update({"weighted_average_price": total_paid/total_energy/euro_kwh_to_sigma_wh,
                                                "total_energy_traded": total_energy})
@@ -1031,8 +1027,7 @@ class Prosumer:
 
         :return: None
         """
-        df_target_grid_power = ft.read_dataframe(f"{self.path}/controller_mpc.ft")
-        df_target_grid_power.set_index("timestamp", inplace=True)
+        df_target_grid_power = ft.read_dataframe(f"{self.path}/controller_mpc.ft").set_index("timestamp")
 
         if market_type == "ex_post":
             '''When operating in a Strommunity market design, the target grid power is
@@ -1042,12 +1037,8 @@ class Prosumer:
             '''When operating in a double-sided electricity market,
                the target grid power is set based on the market results.
                '''
-            # target should be the EV targets with some priority according to urgency
-            list_ts_d = list(range(self.ts_delivery_current,
-                                   self.ts_delivery_current + 15*60*self.config_dict["ma_horizon"], 15*60))
-
-            df_target_grid_power.loc[list_ts_d, f"power_{self.config_dict['id_meter_main']}"] =\
-                [self.matched_bids_by_timestep.loc[t, "net_bids"] * 4 for t in list_ts_d]
+            df_target_grid_power[f"power_{self.config_dict['id_meter_grid']}"] =\
+                self.matched_bids_by_timestep["net_bids"] * 4
 
         ft.write_dataframe(df_target_grid_power.reset_index(),
                            f"{self.path}/target_grid_power.ft")
@@ -1067,9 +1058,9 @@ class Prosumer:
             self.mpc_table[(self.ts_delivery_current <= self.mpc_table.index)
                            & (self.mpc_table.index <= self.ts_delivery_current
                               + 15*60*self.config_dict["ma_horizon"])]
-            [f"power_{self.config_dict['id_meter_main']}"]) / 4
+            [f"power_{self.config_dict['id_meter_grid']}"]) / 4
 
-        df_potential_bids.rename(columns={f"power_{self.config_dict['id_meter_main']}": "net_bids"}, inplace=True)
+        df_potential_bids.rename(columns={f"power_{self.config_dict['id_meter_grid']}": "net_bids"}, inplace=True)
 
         df_potential_bids["net_bids"] = df_potential_bids["net_bids"] - self.matched_bids_by_timestep["net_bids"]
 
@@ -1098,7 +1089,6 @@ class Prosumer:
             if t_s > self.ts_delivery_current:
                 # determine energy to be traded
                 energy_position = round(dict_pot_bids["net_bids"][t_s])
-
                 if abs(energy_position) >= 10:
                     post_position = True
                 else:
@@ -1191,7 +1181,7 @@ class Prosumer:
     def _set_new_meter_reading_local(self, dict_new_readings):
         dict_buffer_meter_readings = ft.read_dataframe(f"{self.path}/buffer_meter_readings.ft").to_dict()
         for id_meter in dict_new_readings:
-            if id_meter == self.config_dict["id_meter_main"] \
+            if id_meter == self.config_dict["id_meter_grid"] \
                     or self.plant_dict[id_meter].get("has_submeter") is not False:
                 reading_old = self._get_old_meter_reading_local(id_meter)
                 energy_in_cum_new = dict_new_readings[id_meter][0] + reading_old[0]
