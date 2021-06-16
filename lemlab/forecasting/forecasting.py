@@ -147,7 +147,7 @@ def _sarma_objective(par, training_data, order=[3, 0, 3, 3, 0, 3, 96, 2, 0, 2, 9
     return np.sqrt(np.mean(np.square(err)))
 
 
-def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_current, filepath, column="power", plants = None):
+def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_current, filepath, column="power"):
     """
     Takes a forecast model fcast and applies it to the data in "column" of "filepath" and returns a forecast starting at
     ts_delivery_current for "fcast_horizon" steps.
@@ -239,7 +239,7 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
         return fcast
 
     elif fcast == "wind_lookup_file_forecast":
-        # Path to directory of forecasts
+        # Path to forecasts
         path_wind = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(filepath))),
                                 "weather","forecast",f"{ts_delivery_current}.ft")
         # has a file for wind in which the prediction are made
@@ -261,8 +261,51 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
         y_hat = [power/4*1000 for power in y_hat]
         return y_hat
 
+
+    elif fcast == "wind_lookup_forecast_halferror":
+        # reduction error in percent
+        error_cut = 0.5
+        # Path to real data
+        path_wind_real_data = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(filepath))),"weather","weather.ft")
+        # Read real data
+        df_real_data = feather.read_dataframe(path_wind_real_data) 
+        df_real_data.set_index("timestamp", inplace=True)
+        # get windspeed in m/s of real data
+        windspeed_real_data = list(df_real_data[(ts_delivery_current <= df_real_data.index)
+                    & (df_real_data.index <= ts_delivery_current + 900 * fcast_horizon -1)]
+                    [column])
+
+        # Path to forcast
+        path_wind_forecast = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(filepath))),
+                                "weather","forecast",f"{ts_delivery_current}.ft")
+        # has a file for wind in which the prediction are made
+        df_forecast = feather.read_dataframe(path_wind_forecast)
+        df_forecast.set_index("timestamp", inplace=True)
+        # get windspeed in m/s
+        windspeed_forecast = list(df_forecast[(ts_delivery_current <= df_forecast.index)
+                    & (df_forecast.index <= ts_delivery_current + 900 * fcast_horizon -1)]
+                    [column])
+
+        # calc. error
+        error_data = [(forecast - real_data)*error_cut for (forecast, real_data) in zip(windspeed_forecast, windspeed_real_data)]
+        # add the error to the real_data
+        y_pre = [real_data + error for (real_data, error) in zip(windspeed_real_data, error_data)]
+
+        # get Windturbine Modell data
+        with open(filepath, "r") as file:
+            data = json.load(file)
+        x_axis = data["wind_speed"]
+        y_axis = data["power"]
+        # get the Power in kW the turbine is producing
+        y_hat = [settlement._lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
+        # calculate the Energie in Wh
+        # divided by 4 because the data is in quarter houers
+        y_hat = [power/4*1000 for power in y_hat]
+        return y_hat
+
+
     elif fcast == "wind_lookup_perfect":
-        # Path to directory of actual data
+        # Path to actual data
         path_wind = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(filepath))),"weather","weather.ft")
         # Read actual data
         df_in = feather.read_dataframe(path_wind)
