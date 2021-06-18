@@ -169,7 +169,7 @@ class ScenarioExecutor:
 
         self.db_conn_admin.end_connection()
         self.db_conn_user.end_connection()
-        exit()
+        # exit()
 
     def end_execution(self):
         """

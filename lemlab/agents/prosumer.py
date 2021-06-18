@@ -157,6 +157,8 @@ class Prosumer:
 
         # wind maxium power constraint
         def wind_rule(_model, _plant):
+            # if self.ts_delivery_prev == 1614571200:
+            #     print('here')
             # get turbine data
             with open(self.path+f"/wind_{_plant}.json", "r") as file_turbine:
                 data_turbine = json.load(file_turbine)
@@ -166,10 +168,10 @@ class Prosumer:
             data_wind = ft.read_dataframe(path_wind)
             data_wind.set_index("timestamp", inplace=True)
             data_wind = float(data_wind[data_wind.index == self.ts_delivery_prev]["wind_speed"].values)
-            # convert data_wind and data_turbine in max possible power in kW
+            # convert data_wind and data_turbine in max possible power in W
             data_power = self._lookup(x=data_wind, x_axis=data_turbine["wind_speed"], y_axis=data_turbine["power"])
             # convert into Energie in Wh
-            p_max = data_power/4*1000
+            p_max = data_power/4
             if self.plant_dict[_plant].get("controllable"):
                 return _model.p_wind[_plant] <= p_max
             return _model.p_wind[_plant] == p_max

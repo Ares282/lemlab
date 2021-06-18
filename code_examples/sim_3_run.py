@@ -9,8 +9,10 @@ import lemlab
 
 
 if __name__ == "__main__":
-    sim_name = "test_sim"
+    # sim_name_list = ["v4_wind_with_controllable", "v4_wind_with_forecast", "v4_wind_with_halferror", "v4_wind_with_perfect", "v4_wind_with_out"]
+    sim_name_list = ["v5_wind_with_forecast"]
 
-    simulation = lemlab.ScenarioExecutor(path_scenario=f"../scenarios/{sim_name}",
-                                         path_results=f"../simulation_results/{sim_name}")
-    simulation.run()
+    for sim_name in sim_name_list:
+        simulation = lemlab.ScenarioExecutor(path_scenario=f"../scenarios/{sim_name}",
+                                            path_results=f"../simulation_results/{sim_name}")
+        simulation.run()

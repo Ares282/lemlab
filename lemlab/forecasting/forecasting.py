@@ -10,7 +10,7 @@ import numpy as np
 import json
 import os
 from scipy.optimize import minimize as sp_minimize
-from lemlab.lem import settlement
+from bisect import bisect_left
 
 """
 forecasting provides functions for the forecasting/prediction of household electric load and production for application
@@ -254,11 +254,11 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
             data = json.load(file)
         x_axis = data["wind_speed"]
         y_axis = data["power"]
-        # get the Power in kW the turbine is producing
-        y_hat = [settlement._lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
+        # get the Power in W the turbine is producing
+        y_hat = [_lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
         # calculate the Energie in Wh
-        # divided by 4 because the data is in quarter houers
-        y_hat = [power/4*1000 for power in y_hat]
+        # divided by 4 because the data is in quarter hours
+        y_hat = [power/4 for power in y_hat]
         return y_hat
 
 
@@ -278,7 +278,7 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
         # Path to forcast
         path_wind_forecast = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(filepath))),
                                 "weather","forecast",f"{ts_delivery_current}.ft")
-        # has a file for wind in which the prediction are made
+        # get the file for wind in which the prediction are made
         df_forecast = feather.read_dataframe(path_wind_forecast)
         df_forecast.set_index("timestamp", inplace=True)
         # get windspeed in m/s
@@ -296,15 +296,17 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
             data = json.load(file)
         x_axis = data["wind_speed"]
         y_axis = data["power"]
-        # get the Power in kW the turbine is producing
-        y_hat = [settlement._lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
+        # get the Power in W the turbine is producing
+        y_hat = [_lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
         # calculate the Energie in Wh
-        # divided by 4 because the data is in quarter houers
-        y_hat = [power/4*1000 for power in y_hat]
+        # divided by 4 because the data is in quarter hours
+        y_hat = [power/4 for power in y_hat]
         return y_hat
 
 
     elif fcast == "wind_lookup_perfect":
+        # if ts_delivery_current == 1614571200:
+        #     print('here')
         # Path to actual data
         path_wind = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(filepath))),"weather","weather.ft")
         # Read actual data
@@ -319,11 +321,11 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
             data = json.load(file)
         x_axis = data["wind_speed"]
         y_axis = data["power"]
-        # get the Power in kW the turbine is producing
-        y_hat = [settlement._lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
+        # get the Power in W the turbine is producing
+        y_hat = [_lookup(x=x, x_axis=x_axis, y_axis=y_axis) for x in y_pre]
         # calculate the Energie in Wh
-        # divided by 4 because the data is in quarter houers
-        y_hat = [power/4*1000 for power in y_hat]
+        # divided by 4 because the data is in quarter hours
+        y_hat = [power/4 for power in y_hat]
         return y_hat
 
     elif fcast == "perfect":
@@ -406,3 +408,24 @@ def get_forecast(fcast, fcast_horizon, fcast_order, fcast_param, ts_delivery_cur
             y_hat[0][i] = y_hat[0][i] * val_known
             y_hat[1][i] = y_hat[1][i] * val_known
         return y_hat
+
+def _lookup(x, x_axis, y_axis):
+        """
+        Static internal method:
+        Perform lookup on provided table. Find y-value for desired x-value
+
+        :param x: x-value to look up
+        :param x_axis: x-axis of lookup table
+        :param y_axis: y-value of lookup table
+
+        :return: float, y-value corresponding to x-value input
+        """
+        if x <= x_axis[0]:
+            return y_axis[0]
+        if x >= x_axis[-1]:
+            return y_axis[-1]
+
+        i = bisect_left(x_axis, x)
+        k = (x - x_axis[i - 1]) / (x_axis[i] - x_axis[i - 1])
+        y = k * (y_axis[i] - y_axis[i - 1]) + y_axis[i - 1]
+        return y

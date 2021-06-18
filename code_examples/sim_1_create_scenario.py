@@ -9,7 +9,7 @@ import lemlab
 
 
 if __name__ == "__main__":
-    sim_name = "test_sim"
+    sim_name = "v5_wind_with_forecast"
 
     scenario = lemlab.Scenario()
     scenario.new_scenario(path_specification="sim_0_config.yaml",

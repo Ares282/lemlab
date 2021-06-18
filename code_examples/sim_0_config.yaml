@@ -12,9 +12,9 @@ simulation:
                                             # simulated at an accelerated rate, before the rts commences
 
   # sim only
-  "sim_start": "2021-03-23 00:00"           # simulation start as unix timestamp
+  "sim_start": "2021-03-01 00:00"           # simulation start as unix timestamp
   "sim_start_tz": "europe/berlin"           # timezone of simulation
-  "sim_length": 1                           # length of the simulation in days
+  "sim_length": 7                           # length of the simulation in days
 
   "path_input_data": "../input_data"        # path relative to the lemlab repository
   "path_scenarios": "../scenarios"          # path relative to the lemlab repository
@@ -153,7 +153,7 @@ prosumer:
 
   ################################ general settings ################################
 
-  "general_number_of": 10                   # number of prosumers (single family homes) to simulate
+  "general_number_of": 300                   # number of prosumers (single family homes) to simulate
 
   "general_solver": "gurobi"                # installed pyomo compatible solver
                                             # preferably miqp capable, e.g. "gurobi" and "cplex"
@@ -213,7 +213,7 @@ prosumer:
 
   ################################ small-scale photovoltaic settings ####################################
 
-  "pv_fraction": 0.7                        # fraction of prosumers with pv plants
+  "pv_fraction": 0.5                        # fraction of prosumers with pv plants
 
   "pv_sizing_power": 1.5                    # sizing of pv plant
                                             # 1 = 1000 wp of pv for every 1000 kwh/a of household consumption
@@ -252,7 +252,7 @@ prosumer:
 
   ################################ battery settings ####################################
 
-  "bat_fraction": 0.75                      # fraction of prosumers with batteries
+  "bat_fraction": 0.2                      # fraction of prosumers with batteries
 
   "bat_fraction_dependent_on_pv": true      # True: bat_fraction is only applied to pv owners
                                             # False: any prosumer may own a battery
@@ -388,23 +388,24 @@ producer:
   ################################ large-scale wind generation settings ####################################
   ################################ wind power is coming soon
 
-  "wind_active": true                      # is there a large-scale wind producer?
+  "wind_active": True                      # is there a large-scale wind producer?
 
-  "wind_power": 30000                       # peak power of wind power generator in w
+  "wind_power": 500_000                       # peak power of wind power generator in w
 
-  "wind_controllable": true                # can the generator be controlled? (can power be decreased?)
+  "wind_controllable": False                # can the generator be controlled? (can power be decreased?)
 
   "wind_fcast": "wind_lookup_file_forecast"       # wind production forecasting method
                                             #   "wind_lookup_perfect" - perfect knowledge of future wind speeds
                                             #                           and turbine model
                                             #   "wind_lookup_file_forecast" - weather forecast from file used with
                                             #                                 turbine model
+                                            #   "wind_lookup_forecast_halferror" - weather error halfed
 
   "wind_quality": "green_local"             # quality that the generated energy should be labelled with on the lem
 
   ################################ large-scale fixed generator settings ####################################
 
-  "fixedgen_active": True                   # is there a large-scale fixed generation producer?
+  "fixedgen_active": false                   # is there a large-scale fixed generation producer?
 
   "fixedgen_power": 3000                    # peak power of fixed power generator in w
                                             # (p.u. power read from file)
