@@ -12,7 +12,7 @@ simulation:
                                             # simulated at an accelerated rate, before the rts commences
 
   # sim only
-  "sim_start": "2021-03-01 00:00"           # simulation start as unix timestamp
+  "sim_start": "2021-03-08 00:00"           # simulation start as unix timestamp
   "sim_start_tz": "europe/berlin"           # timezone of simulation
   "sim_length": 7                           # length of the simulation in days
 
@@ -394,7 +394,7 @@ producer:
 
   "wind_controllable": False                # can the generator be controlled? (can power be decreased?)
 
-  "wind_fcast": "wind_lookup_file_forecast"       # wind production forecasting method
+  "wind_fcast": "wind_lookup_forecast_halferror"       # wind production forecasting method
                                             #   "wind_lookup_perfect" - perfect knowledge of future wind speeds
                                             #                           and turbine model
                                             #   "wind_lookup_file_forecast" - weather forecast from file used with

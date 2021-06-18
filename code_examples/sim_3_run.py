@@ -10,7 +10,7 @@ import lemlab
 
 if __name__ == "__main__":
     # sim_name_list = ["v4_wind_with_controllable", "v4_wind_with_forecast", "v4_wind_with_halferror", "v4_wind_with_perfect", "v4_wind_with_out"]
-    sim_name_list = ["v5_wind_with_forecast"]
+    sim_name_list = ["v6_wind_with_controllable", "v6_wind_with_halferror"]
 
     for sim_name in sim_name_list:
         simulation = lemlab.ScenarioExecutor(path_scenario=f"../scenarios/{sim_name}",
